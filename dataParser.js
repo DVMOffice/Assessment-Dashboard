@@ -93,7 +93,8 @@ const DataParser = (() => {
       return {
         _id:            `assess_${idx}`,
         course:         parseInt(r.Course) || 0,
-        year:           parseInt(r.Year)   || 0,
+        year:           parseInt(r.Year)   || 0,  // always program year 1/2/3
+        academicYear:   r['Academic Year'] || '',  // separate field, never used for filtering
         courseName:     r.Course_name      || 'Unknown Course',
         instructor:     r.CC               || '',
         term:           r.Term             || '',
