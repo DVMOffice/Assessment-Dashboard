@@ -312,6 +312,22 @@
     .btn-secondary { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
     .btn-secondary:hover { background: var(--surface-3); }
 
+    /* ── Export buttons ────────────────────────────────────────── */
+    .btn-export {
+      padding: 6px 12px; font-size: 12px; font-weight: 600;
+      border-radius: var(--radius); border: 1px solid; cursor: pointer;
+      transition: all var(--transition); white-space: nowrap;
+      font-family: var(--font-body);
+    }
+    .btn-export-csv {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .btn-export-csv:hover { background: var(--accent-2); }
+    .btn-export-ical {
+      background: #166534; color: #fff; border-color: #166534;
+    }
+    .btn-export-ical:hover { background: #14532d; }
+
     /* ── Responsive ────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .main-content { padding: 12px 14px; }
@@ -319,9 +335,40 @@
       .filter-bar { padding: 0 14px; }
       .cal-cell { min-height: 72px; }
     }
-    @media (max-width: 640px) {
-      .fbar-course { min-width: 130px; }
-      .cal-cell { min-height: 56px; padding: 4px 3px; }
+    @media (max-width: 768px) {
+      /* Filter bar scrolls horizontally */
+      .filter-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .filter-row { flex-wrap: nowrap; min-width: 580px; padding: 8px 12px; }
+      .fbar-select { font-size: 14px; }
+      .fbar-item   { min-width: 95px; }
+
+      /* Top bar — hide title on small screens */
+      .brand-sep, .brand-title { display: none; }
+      .top-bar { padding: 0 12px; height: 48px; }
+
+      /* Stack calendar full width */
+      .cal-cell { min-height: 60px; padding: 4px 3px; }
+      .cal-event-text { font-size: 10px; }
+      .cal-dow { font-size: 10px; }
+
+      /* Modal full screen */
+      .modal-box { width: 96vw !important; max-height: 92vh;
+                   top: 4% !important; transform: translateX(-50%) !important;
+                   left: 50% !important; }
+
+      /* Upcoming table horizontal scroll */
+      #upcoming-body { overflow-x: auto; }
+      .upcoming-table { min-width: 500px; }
+
+      /* Export buttons smaller */
+      .btn-export { padding: 5px 9px; font-size: 11px; }
+    }
+    @media (max-width: 480px) {
+      .brand-ucvm { font-size: 11px; letter-spacing: 1px; }
+      .cal-cell { min-height: 48px; }
+      .cal-event-text { display: none; }
+      .cal-event-dot { width: 7px; height: 7px; }
+      .btn-icon { width: 30px; height: 30px; font-size: 13px; }
     }
   </style>
 </head>
@@ -337,6 +384,8 @@
       </div>
     </div>
     <div class="top-bar-right">
+      <button id="export-csv-btn" class="btn-export btn-export-csv">⬇ CSV</button>
+      <button id="export-ical-btn" class="btn-export btn-export-ical">📅 iCal</button>
       <button id="dark-toggle" class="btn-icon" title="Toggle dark mode">🌙</button>
     </div>
   </header>
@@ -833,6 +882,83 @@
       document.documentElement.classList.toggle('dark', darkMode);
       document.getElementById('dark-toggle').textContent = darkMode ? '☀️' : '🌙';
       localStorage.setItem('student_dark', JSON.stringify(darkMode));
+    });
+
+    // ── Export CSV ────────────────────────────────────────────────
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+      const data = getFiltered();
+      const header = ['Course','Year','Course Name','Type','Details','Weight','Date','Start Time','Location','Format'];
+      const rows   = data.map(a => [
+        a.course, a.year, `"${a.courseName}"`, a.type,
+        `"${(a.details||'').replace(/"/g,'""')}"`,
+        a.weightRaw,
+        a.effectiveDate ? a.effectiveDate.toISOString().slice(0,10) : '',
+        a.startTime || '', `"${a.location||''}"`, a.format||''
+      ]);
+      const csv  = [header, ...rows].map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const el   = document.createElement('a');
+      el.href = url; el.download = 'ucvm_assessments.csv'; el.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── Export iCal ───────────────────────────────────────────────
+    document.getElementById('export-ical-btn').addEventListener('click', () => {
+      const data  = getFiltered().filter(a => a.effectiveDate);
+      if (!data.length) { alert('No assessments with dates to export.'); return; }
+
+      function icalDate(d) {
+        return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+      }
+      function icalDT(d, t) {
+        if (!t || t === 'N/A' || t === '') return null;
+        const [h,m] = t.split(':');
+        return `${icalDate(d)}T${h.padStart(2,'0')}${(m||'00').padStart(2,'0')}00`;
+      }
+      function esc(s) {
+        return (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+      }
+
+      const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
+      const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//UCVM Assessment Calendar//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+
+      data.forEach(a => {
+        const dtStart = icalDT(a.effectiveDate, a.startTime);
+        const dtEnd   = icalDT(a.effectiveDate, a.endTime);
+        const summary = esc(`[${a.course}] ${a.type}${a.details ? ' – '+a.details : ''}`);
+        const desc    = esc([
+          `Course: ${a.courseName}`,
+          `Year: ${a.year}`,
+          a.weightRaw    ? `Weight: ${a.weightRaw}` : '',
+          a.instructor   ? `Coordinator: ${a.instructor}` : '',
+          a.location     ? `Location: ${a.location}` : '',
+          a.format       ? `Format: ${a.format}` : '',
+          a.notes        ? `Notes: ${a.notes}` : '',
+        ].filter(Boolean).join('\\n'));
+
+        lines.push('BEGIN:VEVENT');
+        lines.push(`UID:ucvm-${a._id}-${stamp}`);
+        lines.push(`DTSTAMP:${stamp}`);
+        if (dtStart) {
+          lines.push(`DTSTART:${dtStart}`);
+          lines.push(`DTEND:${dtEnd || dtStart}`);
+        } else {
+          lines.push(`DTSTART;VALUE=DATE:${icalDate(a.effectiveDate)}`);
+          lines.push(`DTEND;VALUE=DATE:${icalDate(a.effectiveDate)}`);
+        }
+        lines.push(`SUMMARY:${summary}`);
+        lines.push(`DESCRIPTION:${desc}`);
+        if (a.location && a.location !== 'N/A') lines.push(`LOCATION:${esc(a.location)}`);
+        lines.push('END:VEVENT');
+      });
+
+      lines.push('END:VCALENDAR');
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const el   = document.createElement('a');
+      el.href = url; el.download = 'ucvm_assessments.ics'; el.click();
+      URL.revokeObjectURL(url);
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
