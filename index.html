@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assessment Calendar Dashboard</title>
+  <title>UCVM — Assessment Calendar Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -17,8 +17,12 @@
     <!-- ══ TOP BAR ══════════════════════════════════════════════════════════ -->
     <header class="top-bar">
       <div class="top-bar-left">
-        <span class="app-title">📅 Assessment Calendar Dashboard</span>
-        <div id="header-stats" class="header-stats"></div>
+        <div class="app-brand">
+        <span class="app-ucvm">UCVM</span>
+        <span class="app-brand-sep"></span>
+        <span class="app-title">Assessment Calendar Dashboard</span>
+      </div>
+        <!-- header-stats removed per request -->
       </div>
       <div class="top-bar-right">
         <button id="back-to-calendar" class="btn-back-cal hidden">← Calendar</button>
@@ -27,6 +31,7 @@
           <button class="top-tab" data-tab="analytics">Analytics</button>
           <button class="top-tab" data-tab="datatable">Data Table</button>
         </nav>
+        <a href="student.html" class="btn-student-view" title="Open Student Calendar View">🎓 Student View</a>
         <button id="dark-toggle" class="btn-icon" title="Toggle dark mode">🌙</button>
         <button id="export-btn" class="btn-export-top">⬇ Export</button>
       </div>
@@ -81,11 +86,24 @@
               <option value="all">All Types</option>
             </select><span class="fbar-arrow">▾</span></div>
           </div>
+          <!-- Weight — NEW -->
+          <div class="fbar-item">
+            <label class="fbar-label">Weight</label>
+            <div class="fbar-select-wrap"><select id="filter-weight" class="fbar-select">
+              <option value="all">All Weights</option>
+              <option value="0">0% / Credit-Fail</option>
+              <option value="1-9">1% – 9%</option>
+              <option value="10-19">10% – 19%</option>
+              <option value="20-29">20% – 29%</option>
+              <option value="30-49">30% – 49%</option>
+              <option value="50+">50% +</option>
+            </select><span class="fbar-arrow">▾</span></div>
+          </div>
           <!-- Reset -->
           <button id="reset-filters" class="fbar-reset">↺ Reset</button>
         </div>
 
-        <!-- Active filter chips (shows when filters applied) -->
+        <!-- Active filter chips -->
         <div id="active-chips-row" class="active-chips-row hidden">
           <span class="active-chips-label">Active:</span>
           <div id="global-filter-chips" class="filter-bar-chips"></div>
@@ -118,6 +136,7 @@
           </div>
         </div>
 
+        <!-- ── Risk Panel ─────────────────────────────────────────────────── -->
         <div class="risk-column" id="risk-column">
           <div class="risk-panel-header">
             <span class="risk-panel-title">⚠️ Risk Alerts</span>
@@ -130,11 +149,7 @@
 
       <!-- Overview Tab -->
       <section id="tab-overview" class="tab-panel">
-
-        <!-- ROW 1: KPIs -->
         <div id="kpi-grid" class="kpi-grid"></div>
-
-        <!-- ROW 2: Charts side by side -->
         <div class="ov-charts-row">
           <div class="card">
             <div class="card-header">
@@ -150,22 +165,17 @@
             <div id="ov-heatmap" class="ov-heatmap"></div>
           </div>
         </div>
-
-        <!-- ROW 3: Upcoming assessments -->
         <div class="card" style="margin-top:14px">
           <div class="card-header">
             <h3 class="card-title">Assessments Starting Today Onwards</h3>
-            <span class="card-hint">Next 14 days · click to view in calendar</span>
+            <span class="card-hint" id="ov-upcoming-hint">Next 14 days · click to view in calendar</span>
           </div>
           <div id="ov-upcoming" class="ov-upcoming"></div>
         </div>
-
       </section>
 
       <!-- Analytics Tab -->
       <section id="tab-analytics" class="tab-panel">
-
-        <!-- Academic cycle + term filters -->
         <div class="analytics-filter-bar">
           <span class="af-label">Cycle:</span>
           <div id="af-cycle" style="display:flex;gap:4px"></div>
@@ -176,7 +186,6 @@
           <button class="af-btn" data-term="Fall">Fall</button>
           <button class="af-btn" data-term="All Year">All Year</button>
         </div>
-
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Weekly Workload Distribution</h3>
@@ -220,8 +229,6 @@
             <div id="monthly-weekly-table" class="monthly-weekly-table"></div>
           </div>
         </div>
-
-        <!-- Course Summary -->
         <div class="card" style="margin-top:14px">
           <div class="card-header">
             <h3 class="card-title">Course Summary</h3>
