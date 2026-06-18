@@ -18,6 +18,8 @@
   let _csCourse          = 'all';
   let _filterWeight      = 'all';
   let _filterCycle       = 'all';
+  let _defaultCycle      = 'all'; // tracks the auto-set default so we don't show banner on load
+  let _appLoaded         = false; // prevents banner on initial render
 
   // ── Load CSV ─────────────────────────────────────────────────────────────
   let rawData;
@@ -43,8 +45,9 @@
   await DataService.setData(rawData);
   recomputeRisks(rawData);
   populateFilterDropdowns(rawData);
-  StateManager.set('activeTab', null);  // start on calendar+risk view
+  StateManager.set('activeTab', null);
   applyFiltersAndRender();
+  _appLoaded = true; // banner allowed from here on
 
   // ── State listeners ───────────────────────────────────────────────────────
   StateManager.on('state:filters',      () => applyFiltersAndRender());
@@ -90,9 +93,12 @@
     renderFilterBar(filters, data.length, all.length);
 
     // ── Auto-jump + filter result banner ─────────────────────────
-    const hasActiveFilters = filters.year !== 'all' || filters.month !== 'all' ||
+    const hasActiveFilters = _appLoaded && (
+      filters.year !== 'all' || filters.month !== 'all' ||
       filters.course !== 'all' || filters.type !== 'all' || filters.search ||
-      _filterWeight !== 'all' || _filterCycle !== 'all';
+      _filterWeight !== 'all' ||
+      (_filterCycle !== 'all' && _filterCycle !== _defaultCycle)
+    );
 
     if (hasActiveFilters) {
       // Remove any existing filter result banner
@@ -1510,8 +1516,9 @@
       // Default to the LATEST cycle in the data
       const latestCycle = cycles[cycles.length - 1];
       if (latestCycle) {
-        cycleEl.value = latestCycle;
-        _filterCycle = latestCycle;
+        cycleEl.value  = latestCycle;
+        _filterCycle   = latestCycle;
+        _defaultCycle  = latestCycle; // remember so banner ignores it on load
       }
     }
   }
