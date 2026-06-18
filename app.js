@@ -17,6 +17,7 @@
   let _csYear            = 'all';
   let _csCourse          = 'all';
   let _filterWeight      = 'all';
+  let _filterCycle       = 'all';
 
   // ── Load CSV ─────────────────────────────────────────────────────────────
   let rawData;
@@ -69,6 +70,9 @@
       const q = filters.search.toLowerCase();
       data = data.filter(a => a.courseName.toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || a.details.toLowerCase().includes(q) || String(a.course).includes(q));
     }
+    if (_filterCycle !== 'all') {
+      data = data.filter(a => a.effectiveDate && getAcademicCycle(a.effectiveDate) === _filterCycle);
+    }
     if (_filterWeight !== 'all') {
       data = data.filter(a => {
         const w = a.weight;
@@ -87,7 +91,8 @@
 
     // ── Auto-jump + filter result banner ─────────────────────────
     const hasActiveFilters = filters.year !== 'all' || filters.month !== 'all' ||
-      filters.course !== 'all' || filters.type !== 'all' || filters.search || _filterWeight !== 'all';
+      filters.course !== 'all' || filters.type !== 'all' || filters.search ||
+      _filterWeight !== 'all' || _filterCycle !== 'all';
 
     if (hasActiveFilters) {
       // Remove any existing filter result banner
@@ -1320,6 +1325,7 @@
     if (filters.month !== 'all') active.push({key:'month', label:`Month: ${MONTH_NAMES[parseInt(filters.month)]}`});
     if (filters.search)          active.push({key:'search',label:`"${filters.search}"`});
     if (_filterWeight !== 'all') active.push({key:'weight',label:`Weight: ${_filterWeight}%`});
+    if (_filterCycle  !== 'all') active.push({key:'cycle', label:`Cycle: ${_filterCycle}`});
 
     const bar   = document.getElementById('active-chips-row');
     const chips = document.getElementById('global-filter-chips');
@@ -1334,6 +1340,7 @@
         e.stopPropagation();
         const k = btn.dataset.key;
         if (k === 'weight') { _filterWeight = 'all'; const el = document.getElementById('filter-weight'); if (el) el.value='all'; applyFiltersAndRender(); return; }
+        if (k === 'cycle')  { _filterCycle  = 'all'; const el = document.getElementById('filter-cycle');  if (el) el.value='all'; applyFiltersAndRender(); return; }
         StateManager.setFilters({[k]: k==='search'?'':'all'});
         if (k==='course') document.getElementById('filter-course').value='all';
         if (k==='year')   document.getElementById('filter-year').value='all';
@@ -1420,11 +1427,16 @@
     document.getElementById('search-input').addEventListener('input',   e => StateManager.setFilters({search:e.target.value}));
     const weightEl = document.getElementById('filter-weight');
     if (weightEl) weightEl.addEventListener('change', e => { _filterWeight = e.target.value; applyFiltersAndRender(); });
+    const cycleEl2 = document.getElementById('filter-cycle');
+    if (cycleEl2) cycleEl2.addEventListener('change', e => { _filterCycle = e.target.value; applyFiltersAndRender(); });
 
     function resetAllFilters() {
       _filterWeight = 'all';
+      _filterCycle  = 'all';
       const wEl = document.getElementById('filter-weight');
       if (wEl) wEl.value = 'all';
+      const cEl = document.getElementById('filter-cycle');
+      if (cEl) cEl.value = 'all';
       StateManager.resetFilters();
       filterIds.forEach(id => document.getElementById(id).value='all');
       document.getElementById('search-input').value='';
@@ -1444,19 +1456,64 @@
     document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
   }
 
+  function getAcademicCycle(date) {
+    if (!date) return null;
+    const mo = date.getMonth() + 1; // 1-12
+    const yr = date.getFullYear();
+    const start = mo >= 8 ? yr : yr - 1;
+    return `${start}-${start + 1}`;
+  }
+
   function populateFilterDropdowns(all) {
     const courseEl = document.getElementById('filter-course');
     const typeEl   = document.getElementById('filter-type');
     const yearEl   = document.getElementById('filter-year');
+    const cycleEl  = document.getElementById('filter-cycle');
 
+    // Courses
     const courses = [...new Map(all.map(a=>[a.course,a.courseName])).entries()].sort((a,b)=>a[0]-b[0]);
-    courses.forEach(([id,name]) => { const o=document.createElement('option'); o.value=id; o.textContent=`${id} – ${name.slice(0,28)}`; courseEl.appendChild(o); });
+    courses.forEach(([id,name]) => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = `${id} – ${name.slice(0,28)}`;
+      courseEl.appendChild(o);
+    });
 
+    // Types
     const types = [...new Set(all.map(a=>a.type))].sort();
-    types.forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; typeEl.appendChild(o); });
+    types.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      typeEl.appendChild(o);
+    });
 
-    const years = [...new Set(all.map(a=>a.year))].sort();
-    years.forEach(y => { const o=document.createElement('option'); o.value=y; o.textContent=`Year ${y}`; yearEl.appendChild(o); });
+    // Program Years — only 1, 2, 3 from CSV Year column
+    const progYears = [...new Set(all.map(a=>a.year).filter(Boolean))].sort();
+    progYears.forEach(y => {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = `Year ${y}`;
+      yearEl.appendChild(o);
+    });
+
+    // Academic Cycles — derived from assessment dates (Aug–Jul)
+    if (cycleEl) {
+      const cycleSet = new Set();
+      all.filter(a => a.effectiveDate).forEach(a => {
+        const c = getAcademicCycle(a.effectiveDate);
+        if (c) cycleSet.add(c);
+      });
+      const cycles = [...cycleSet].sort();
+      cycles.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        cycleEl.appendChild(o);
+      });
+      // Default to the LATEST cycle in the data
+      const latestCycle = cycles[cycles.length - 1];
+      if (latestCycle) {
+        cycleEl.value = latestCycle;
+        _filterCycle = latestCycle;
+      }
+    }
   }
 
   function applyDarkMode(on) {
