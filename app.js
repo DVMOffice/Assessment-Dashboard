@@ -1060,10 +1060,14 @@
     const courseEl = document.getElementById('cs-filter-course');
     if (!yearEl || !courseEl) return;
 
-    // Populate year options once
+    // Populate year options once — always use full dataset for consistent Year 1/2/3
     if (yearEl.dataset.populated !== '1') {
-      [...new Set(data.map(a => a.year))].sort().forEach(y => {
-        const o = document.createElement('option'); o.value=y; o.textContent=`Year ${y}`; yearEl.appendChild(o);
+      const allData = StateManager.get('assessments');
+      const progYears = [...new Set(allData.map(a => a.year).filter(Boolean))].sort();
+      progYears.forEach(y => {
+        const o = document.createElement('option');
+        o.value = y; o.textContent = `Year ${y}`;
+        yearEl.appendChild(o);
       });
       yearEl.dataset.populated = '1';
     }
