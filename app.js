@@ -215,9 +215,9 @@
             <span class="rp-section-sub">${filteredOverlaps.length} conflict${filteredOverlaps.length > 1 ? 's' : ''} detected</span>
           </div>
           <span class="rp-section-count rp-count-overlap">${filteredOverlaps.length}</span>
-          <span class="rp-section-chevron open">›</span>
+          <span class="rp-section-chevron">›</span>
         </div>
-        <div class="rp-items" id="rp-overlaps">`;
+        <div class="rp-items" id="rp-overlaps" style="display:none">`;
       filteredOverlaps.forEach(seq => {
         const isHighlighted = seq.id === _highlightedRiskId;
         const courseNums    = [...new Set(seq.items.map(a => a.course))];
@@ -244,9 +244,9 @@
             <span class="rp-section-sub">${filteredClusters.length} streak${filteredClusters.length > 1 ? 's' : ''} detected</span>
           </div>
           <span class="rp-section-count rp-count-cluster">${filteredClusters.length}</span>
-          <span class="rp-section-chevron open">›</span>
+          <span class="rp-section-chevron">›</span>
         </div>
-        <div class="rp-items" id="rp-clusters">`;
+        <div class="rp-items" id="rp-clusters" style="display:none">`;
       filteredClusters.forEach(seq => {
         const isHighlighted = seq.id === _highlightedRiskId;
         const courseNums    = [...new Set(seq.items.map(a => a.course))];
