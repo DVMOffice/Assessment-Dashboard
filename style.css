@@ -89,9 +89,19 @@ canvas { display: block; }
 }
 .top-bar-left  { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 0; }
 .top-bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.app-brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.app-ucvm {
+  font-family: var(--font-head); font-size: 12px; font-weight: 800;
+  color: var(--accent); letter-spacing: 2.5px; text-transform: uppercase;
+}
+.app-brand-sep {
+  width: 1px; height: 14px; background: var(--border-2); flex-shrink: 0;
+}
 .app-title {
-  font-family: var(--font-head); font-size: 15px; font-weight: 800;
-  color: var(--text); letter-spacing: -.3px; white-space: nowrap;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text-3); letter-spacing: 0;
 }
 .header-stats { display: flex; align-items: stretch; }
 .hstat {
@@ -321,8 +331,8 @@ html.dark .global-filter-bar { background: #0d1f3c; border-bottom-color: #1e3a6a
   display: flex; align-items: center; gap: 7px;
   text-transform: uppercase;
 }
-.rp-title-overlap { color: #B45309; }
-.rp-title-cluster { color: #B91C1C; }
+.rp-title-overlap { color: var(--text-2); }
+.rp-title-cluster { color: var(--text-2); }
 .rp-title-icon { display: none; }
 .rp-section-count {
   font-size: 10px; font-weight: 800; padding: 1px 7px;
@@ -852,3 +862,170 @@ html.dark .urg-week     { background: #0E2040; border-color: #1E3A8A; }
   font-size: 11.5px; color: var(--text-3); padding: 6px 12px 8px;
   font-style: italic;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   STUDENT VIEW LINK
+════════════════════════════════════════════════════════════════ */
+.btn-student-view {
+  padding: 7px 13px; font-size: 12px; font-weight: 600;
+  color: var(--accent); background: var(--accent-light);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  text-decoration: none; white-space: nowrap;
+  transition: all var(--transition);
+}
+.btn-student-view:hover { background: var(--accent); color: #fff; }
+
+/* ════════════════════════════════════════════════════════════════
+   RISK PANEL — REDESIGNED SECTION HEADERS
+   Inspired by Linear, Notion, Vercel dashboard patterns:
+   - One single clickable row, no orphan toggle button
+   - Muted color indicators, no saturated backgrounds
+   - Clean typography, no uppercase shouting
+   - Count badge is subtle, not a red alarm
+════════════════════════════════════════════════════════════════ */
+
+/* The whole header is one flex row, fully clickable */
+.rp-section-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px 10px;
+  cursor: pointer; user-select: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+  position: relative;
+}
+.rp-section-header:hover { background: var(--surface-2); }
+
+/* Left: a thin 3px color bar instead of a big emoji box */
+.rp-section-accent {
+  width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0;
+}
+.rp-accent-overlap { background: #D97706; }
+.rp-accent-cluster { background: #DC2626; }
+
+/* Text block */
+.rp-section-header-text { flex: 1; min-width: 0; }
+.rp-section-title {
+  font-size: 12.5px; font-weight: 600;
+  color: var(--text); letter-spacing: 0;
+  text-transform: none; display: block; line-height: 1.3;
+}
+/* Override old colored title rules */
+.rp-section-header-overlap .rp-section-title,
+.rp-section-header-cluster .rp-section-title { color: var(--text); }
+
+.rp-section-sub {
+  font-size: 11px; color: var(--text-3); font-weight: 400;
+  display: block; margin-top: 1px;
+}
+
+/* Count badge — neutral pill, not alarming */
+.rp-section-count {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  color: var(--text-2);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+/* Remove old colored backgrounds */
+.rp-count-overlap,
+.rp-count-cluster { background: var(--surface-3); color: var(--text-2); }
+
+/* Chevron — right side, rotates on open/close */
+.rp-section-chevron {
+  font-size: 16px; color: var(--text-3);
+  transition: transform var(--transition);
+  flex-shrink: 0; margin-left: 2px;
+  font-weight: 600;
+}
+.rp-section-chevron.open { transform: rotate(90deg); }
+
+/* Remove old orphan toggle button entirely */
+.rp-section-toggle-btn { display: none; }
+.rp-section-icon-wrap  { display: none; }
+.rp-section-header-content { display: contents; }
+
+/* ════════════════════════════════════════════════════════════════
+   RISK PANEL — INDIVIDUAL ITEMS (cleaner)
+════════════════════════════════════════════════════════════════ */
+.rp-item {
+  padding: 10px 14px 10px 17px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+  border-left: 3px solid transparent;
+}
+.rp-item-overlap:hover { background: var(--surface-2); border-left-color: #D97706; }
+.rp-item-cluster:hover { background: var(--surface-2); border-left-color: #DC2626; }
+.rp-item.highlighted   { border-left-color: var(--accent) !important; background: var(--accent-light) !important; }
+
+
+
+/* ════════════════════════════════════════════════════════════════
+   FILTER RESULT BANNER
+════════════════════════════════════════════════════════════════ */
+.frb {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; border-radius: var(--radius);
+  margin-bottom: 10px; font-size: 12.5px;
+  border: 1px solid; animation: fadeUp .18s ease;
+}
+.frb-results {
+  background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF;
+}
+html.dark .frb-results { background: #0d1f3c; border-color: #1e3a6a; color: #93C5FD; }
+
+.frb-empty {
+  background: #FFF7ED; border-color: #FED7AA; color: #92400E;
+}
+html.dark .frb-empty { background: #1c1200; border-color: #78350F; color: #FCD34D; }
+
+.frb-icon  { font-size: 14px; flex-shrink: 0; }
+.frb-text  { flex: 1; line-height: 1.4; }
+.frb-text strong { font-weight: 700; }
+
+.frb-jump {
+  padding: 4px 10px; font-size: 11.5px; font-weight: 600;
+  background: #1E40AF; color: #fff; border-radius: var(--radius);
+  white-space: nowrap; transition: all var(--transition); flex-shrink: 0;
+}
+.frb-jump:hover { background: #1e3a8a; }
+
+.frb-reset {
+  padding: 4px 10px; font-size: 11.5px; font-weight: 600;
+  background: #92400E; color: #fff; border-radius: var(--radius);
+  white-space: nowrap; transition: all var(--transition); flex-shrink: 0;
+}
+.frb-reset:hover { background: #78350F; }
+
+.frb-dismiss {
+  font-size: 12px; color: currentColor; opacity: .5;
+  padding: 2px 5px; flex-shrink: 0; transition: opacity var(--transition);
+}
+.frb-dismiss:hover { opacity: 1; }
+
+/* ── In-calendar empty nudge (when navigating away from results) */
+.cal-empty-nudge {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 18px; font-size: 12.5px; color: var(--text-3);
+  border-top: 1px solid var(--border);
+}
+.cal-nudge-jump {
+  padding: 4px 10px; font-size: 11.5px; font-weight: 600;
+  color: var(--accent); background: var(--accent-light);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  transition: all var(--transition);
+}
+.cal-nudge-jump:hover { background: var(--accent); color: #fff; }
+
+.cal-overflow-wrap { display: flex; flex-direction: column; gap: 1px; }
+.cal-event-hidden  { display: none; }
+.cal-more-btn {
+  font-size: 10.5px; font-weight: 700; color: var(--accent);
+  background: var(--accent-light); border: 1px solid var(--accent);
+  border-radius: 3px; padding: 2px 6px; margin-top: 2px;
+  cursor: pointer; transition: all var(--transition); text-align: center;
+  align-self: flex-start;
+}
+.cal-more-btn:hover { background: var(--accent); color: #fff; }
