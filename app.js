@@ -1063,7 +1063,7 @@
     // Populate year options once — always use full dataset for consistent Year 1/2/3
     if (yearEl.dataset.populated !== '1') {
       const allData = StateManager.get('assessments');
-      const progYears = [...new Set(allData.map(a => a.year).filter(Boolean))].sort();
+      const progYears = [...new Set(allData.map(a => a.year).filter(y => y >= 1 && y <= 3))].sort();
       progYears.forEach(y => {
         const o = document.createElement('option');
         o.value = y; o.textContent = `Year ${y}`;
@@ -1462,6 +1462,10 @@
     const expBtn = document.getElementById('export-btn') || document.getElementById('export-btn-top');
     if (expBtn) expBtn.addEventListener('click', exportCSV);
 
+    // Export iCal
+    const icalBtn = document.getElementById('ical-btn');
+    if (icalBtn) icalBtn.addEventListener('click', exportICal);
+
     // ESC closes modal
     document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
   }
@@ -1496,8 +1500,8 @@
       typeEl.appendChild(o);
     });
 
-    // Program Years — only 1, 2, 3 from CSV Year column
-    const progYears = [...new Set(all.map(a=>a.year).filter(Boolean))].sort();
+    // Program Years — strictly 1, 2, 3 only
+    const progYears = [...new Set(all.map(a => a.year).filter(y => y >= 1 && y <= 3))].sort();
     progYears.forEach(y => {
       const o = document.createElement('option');
       o.value = y; o.textContent = `Year ${y}`;
@@ -1545,6 +1549,88 @@
     const blob   = new Blob([csv],{type:'text/csv'});
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a'); a.href=url; a.download='assessments_export.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportICal() {
+    const data = StateManager.get('filteredData');
+    const dated = data.filter(a => a.effectiveDate);
+
+    if (!dated.length) {
+      alert('No assessments with dates to export.');
+      return;
+    }
+
+    function icalDate(date) {
+      // Format: YYYYMMDD
+      const y = date.getFullYear();
+      const m = String(date.getMonth()+1).padStart(2,'0');
+      const d = String(date.getDate()).padStart(2,'0');
+      return `${y}${m}${d}`;
+    }
+
+    function icalDateTime(date, timeStr) {
+      // If time available: YYYYMMDDTHHmmSS, else all-day
+      if (!timeStr || timeStr === 'N/A' || timeStr === '') return null;
+      const [h,m] = timeStr.split(':').map(s=>s.padStart(2,'0'));
+      const y = date.getFullYear();
+      const mo = String(date.getMonth()+1).padStart(2,'0');
+      const d  = String(date.getDate()).padStart(2,'0');
+      return `${y}${mo}${d}T${h}${m}00`;
+    }
+
+    function escIcal(str) {
+      return (str||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+    }
+
+    const stamp = new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//UCVM Assessment Calendar//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+
+    dated.forEach((a, i) => {
+      const dtStart = icalDateTime(a.effectiveDate, a.startTime);
+      const dtEnd   = icalDateTime(a.effectiveDate, a.endTime);
+      const isAllDay = !dtStart;
+
+      const summary = escIcal(`[${a.course}] ${a.type}${a.details ? ' – '+a.details : ''}`);
+      const desc    = escIcal([
+        `Course: ${a.courseName}`,
+        `Year: ${a.year}`,
+        `Type: ${a.type}`,
+        a.weightRaw    ? `Weight: ${a.weightRaw}` : '',
+        a.location     ? `Location: ${a.location}` : '',
+        a.format       ? `Format: ${a.format}` : '',
+        a.openClosebook? `Book: ${a.openClosebook}` : '',
+        a.instructor   ? `Coordinator: ${a.instructor}` : '',
+        a.notes        ? `Notes: ${a.notes}` : '',
+      ].filter(Boolean).join('\\n'));
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:ucvm-${a._id}-${stamp}`);
+      lines.push(`DTSTAMP:${stamp}`);
+
+      if (isAllDay) {
+        lines.push(`DTSTART;VALUE=DATE:${icalDate(a.effectiveDate)}`);
+        lines.push(`DTEND;VALUE=DATE:${icalDate(a.effectiveDate)}`);
+      } else {
+        lines.push(`DTSTART:${dtStart}`);
+        lines.push(`DTEND:${dtEnd || dtStart}`);
+      }
+
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${desc}`);
+      if (a.location && a.location !== 'N/A') lines.push(`LOCATION:${escIcal(a.location)}`);
+      lines.push('END:VEVENT');
+    });
+
+    lines.push('END:VCALENDAR');
+
+    const ical = lines.join('\r\n');
+    const blob = new Blob([ical], { type: 'text/calendar;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'ucvm_assessments.ics';
+    a.click();
     URL.revokeObjectURL(url);
   }
 
