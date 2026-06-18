@@ -349,7 +349,14 @@
         <input type="text" id="search-input" class="fbar-input" placeholder="Search course, assessment…" />
       </div>
       <div class="fbar-item">
-        <label class="fbar-label">Year</label>
+        <label class="fbar-label">Cycle</label>
+        <div class="fbar-select-wrap">
+          <select id="filter-cycle" class="fbar-select"><option value="all">All Cycles</option></select>
+          <span class="fbar-arrow">▾</span>
+        </div>
+      </div>
+      <div class="fbar-item">
+        <label class="fbar-label">Prog. Year</label>
         <div class="fbar-select-wrap">
           <select id="filter-year" class="fbar-select"><option value="all">All Years</option></select>
           <span class="fbar-arrow">▾</span>
@@ -456,6 +463,15 @@
     let calView     = 'month';
     let darkMode    = JSON.parse(localStorage.getItem('student_dark') || 'false');
     let filters     = { year: 'all', month: 'all', course: 'all', type: 'all', search: '' };
+    let _filterCycle = 'all';
+
+    function getAcademicCycle(date) {
+      if (!date) return null;
+      const mo = date.getMonth() + 1;
+      const yr = date.getFullYear();
+      const start = mo >= 8 ? yr : yr - 1;
+      return `${start}-${start + 1}`;
+    }
 
     // Apply saved dark mode
     if (darkMode) document.documentElement.classList.add('dark');
@@ -465,20 +481,39 @@
     const yearEl   = document.getElementById('filter-year');
     const courseEl = document.getElementById('filter-course');
     const typeEl   = document.getElementById('filter-type');
+    const cycleEl  = document.getElementById('filter-cycle');
 
-    [...new Set(rawData.map(a => a.year))].sort().forEach(y => {
+    // Program Years — Year 1, 2, 3 only
+    [...new Set(rawData.map(a => a.year).filter(Boolean))].sort().forEach(y => {
       const o = document.createElement('option'); o.value = y; o.textContent = `Year ${y}`; yearEl.appendChild(o);
     });
+    // Courses
     [...new Map(rawData.map(a => [a.course, a.courseName])).entries()].sort((a,b) => a[0]-b[0]).forEach(([id,name]) => {
       const o = document.createElement('option'); o.value = id; o.textContent = `${id} – ${name.slice(0,28)}`; courseEl.appendChild(o);
     });
+    // Types
     [...new Set(rawData.map(a => a.type))].sort().forEach(t => {
       const o = document.createElement('option'); o.value = t; o.textContent = t; typeEl.appendChild(o);
     });
+    // Academic Cycles — derived from dates, default = latest
+    if (cycleEl) {
+      const cycleSet = new Set();
+      rawData.filter(a => a.effectiveDate).forEach(a => {
+        const c = getAcademicCycle(a.effectiveDate);
+        if (c) cycleSet.add(c);
+      });
+      const cycles = [...cycleSet].sort();
+      cycles.forEach(c => {
+        const o = document.createElement('option'); o.value = c; o.textContent = c; cycleEl.appendChild(o);
+      });
+      const latestCycle = cycles[cycles.length - 1];
+      if (latestCycle) { cycleEl.value = latestCycle; _filterCycle = latestCycle; }
+    }
 
     // ── Filter logic ─────────────────────────────────────────────
     function getFiltered() {
       let data = [...rawData];
+      if (_filterCycle !== 'all') data = data.filter(a => a.effectiveDate && getAcademicCycle(a.effectiveDate) === _filterCycle);
       if (filters.year   !== 'all') data = data.filter(a => String(a.year)   === String(filters.year));
       if (filters.month  !== 'all') data = data.filter(a => a.effectiveDate && (a.effectiveDate.getMonth()+1) === parseInt(filters.month));
       if (filters.course !== 'all') data = data.filter(a => String(a.course) === String(filters.course));
@@ -499,6 +534,7 @@
       if (filters.course !== 'all') { const n = rawData.find(a=>String(a.course)===String(filters.course))?.courseName||''; active.push({k:'course', l:`Course: ${filters.course}${n?' – '+n.slice(0,18):''}`}); }
       if (filters.type   !== 'all') active.push({k:'type',   l:`Type: ${filters.type}`});
       if (filters.search)           active.push({k:'search', l:`"${filters.search}"`});
+      if (_filterCycle   !== 'all') active.push({k:'cycle',  l:`Cycle: ${_filterCycle}`});
 
       const row = document.getElementById('active-chips-row');
       const list = document.getElementById('chip-list');
@@ -511,6 +547,7 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const k = btn.dataset.k;
+          if (k === 'cycle') { _filterCycle = 'all'; const el = document.getElementById('filter-cycle'); if (el) el.value='all'; render(); return; }
           filters[k] = k === 'search' ? '' : 'all';
           if (k !== 'search') document.getElementById(`filter-${k}`).value = 'all';
           else document.getElementById('search-input').value = '';
@@ -776,18 +813,19 @@
     document.getElementById('filter-course').addEventListener('change', e => { filters.course = e.target.value; render(); });
     document.getElementById('filter-type').addEventListener('change',   e => { filters.type   = e.target.value; render(); });
     document.getElementById('search-input').addEventListener('input',   e => { filters.search = e.target.value; render(); });
-    document.getElementById('reset-filters').addEventListener('click', () => {
+    document.getElementById('filter-cycle')?.addEventListener('change', e => { _filterCycle = e.target.value; render(); });
+
+    function doReset() {
       filters = { year:'all', month:'all', course:'all', type:'all', search:'' };
-      ['filter-year','filter-month','filter-course','filter-type'].forEach(id => document.getElementById(id).value='all');
+      _filterCycle = 'all';
+      ['filter-year','filter-month','filter-course','filter-type','filter-cycle'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = 'all';
+      });
       document.getElementById('search-input').value = '';
       render();
-    });
-    document.getElementById('clear-all').addEventListener('click', () => {
-      filters = { year:'all', month:'all', course:'all', type:'all', search:'' };
-      ['filter-year','filter-month','filter-course','filter-type'].forEach(id => document.getElementById(id).value='all');
-      document.getElementById('search-input').value = '';
-      render();
-    });
+    }
+    document.getElementById('reset-filters').addEventListener('click', doReset);
+    document.getElementById('clear-all').addEventListener('click',    doReset);
     document.getElementById('dark-toggle').addEventListener('click', () => {
       darkMode = !darkMode;
       document.documentElement.classList.toggle('dark', darkMode);
