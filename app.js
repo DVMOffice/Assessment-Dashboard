@@ -16,6 +16,7 @@
   let _afTerm            = 'all';
   let _csYear            = 'all';
   let _csCourse          = 'all';
+  let _filterWeight      = 'all';
 
   // ── Load CSV ─────────────────────────────────────────────────────────────
   let rawData;
@@ -68,9 +69,45 @@
       const q = filters.search.toLowerCase();
       data = data.filter(a => a.courseName.toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || a.details.toLowerCase().includes(q) || String(a.course).includes(q));
     }
+    if (_filterWeight !== 'all') {
+      data = data.filter(a => {
+        const w = a.weight;
+        if (_filterWeight === '0')     return w === 0;
+        if (_filterWeight === '1-9')   return w !== null && w >= 1  && w <= 9;
+        if (_filterWeight === '10-19') return w !== null && w >= 10 && w <= 19;
+        if (_filterWeight === '20-29') return w !== null && w >= 20 && w <= 29;
+        if (_filterWeight === '30-49') return w !== null && w >= 30 && w <= 49;
+        if (_filterWeight === '50+')   return w !== null && w >= 50;
+        return true;
+      });
+    }
 
     StateManager.set('filteredData', data);
     renderFilterBar(filters, data.length, all.length);
+
+    // ── Auto-jump + filter result banner ─────────────────────────
+    const hasActiveFilters = filters.year !== 'all' || filters.month !== 'all' ||
+      filters.course !== 'all' || filters.type !== 'all' || filters.search || _filterWeight !== 'all';
+
+    if (hasActiveFilters) {
+      // Remove any existing filter result banner
+      document.getElementById('filter-result-banner')?.remove();
+
+      const datedResults = data.filter(a => a.effectiveDate).sort((a,b) => a.effectiveDate - b.effectiveDate);
+
+      if (datedResults.length === 0) {
+        // No results — show empty banner, don't jump
+        showFilterResultBanner(0, null);
+      } else {
+        // Jump calendar to month of first result
+        const firstDate = datedResults[0].effectiveDate;
+        StateManager.set('calendarDate', new Date(firstDate.getFullYear(), firstDate.getMonth(), 1));
+        showFilterResultBanner(datedResults.length, firstDate);
+      }
+    } else {
+      // Filters cleared — remove banner
+      document.getElementById('filter-result-banner')?.remove();
+    }
 
     // Main view always renders
     renderCalendar();
@@ -171,13 +208,14 @@
     // Same-Day Overlaps section
     if (filteredOverlaps.length) {
       html += `<div class="rp-section">
-        <div class="rp-section-header" data-section="overlaps">
-          <span class="rp-section-title rp-title-overlap">
-            <span class="rp-title-icon">📅</span>
-            Same-Day Overlaps
-            <span class="rp-section-count rp-count-overlap">${filteredOverlaps.length}</span>
-          </span>
-          <span class="rp-section-toggle">▾</span>
+        <div class="rp-section-header rp-section-header-overlap" data-section="overlaps">
+          <div class="rp-section-accent rp-accent-overlap"></div>
+          <div class="rp-section-header-text">
+            <span class="rp-section-title">Same-Day Overlaps</span>
+            <span class="rp-section-sub">${filteredOverlaps.length} conflict${filteredOverlaps.length > 1 ? 's' : ''} detected</span>
+          </div>
+          <span class="rp-section-count rp-count-overlap">${filteredOverlaps.length}</span>
+          <span class="rp-section-chevron open">›</span>
         </div>
         <div class="rp-items" id="rp-overlaps">`;
       filteredOverlaps.forEach(seq => {
@@ -199,13 +237,14 @@
     // Back-to-Back Days section
     if (filteredClusters.length) {
       html += `<div class="rp-section">
-        <div class="rp-section-header" data-section="clusters">
-          <span class="rp-section-title rp-title-cluster">
-            <span class="rp-title-icon">📆</span>
-            Back-to-Back Days
-            <span class="rp-section-count rp-count-cluster">${filteredClusters.length}</span>
-          </span>
-          <span class="rp-section-toggle">▾</span>
+        <div class="rp-section-header rp-section-header-cluster" data-section="clusters">
+          <div class="rp-section-accent rp-accent-cluster"></div>
+          <div class="rp-section-header-text">
+            <span class="rp-section-title">Back-to-Back Days</span>
+            <span class="rp-section-sub">${filteredClusters.length} streak${filteredClusters.length > 1 ? 's' : ''} detected</span>
+          </div>
+          <span class="rp-section-count rp-count-cluster">${filteredClusters.length}</span>
+          <span class="rp-section-chevron open">›</span>
         </div>
         <div class="rp-items" id="rp-clusters">`;
       filteredClusters.forEach(seq => {
@@ -260,14 +299,16 @@
 
     // Section collapse toggles
     body.querySelectorAll('.rp-section-header').forEach(hdr => {
-      hdr.addEventListener('click', () => {
-        const section = hdr.dataset.section;
-        const items   = document.getElementById(`rp-${section}`);
-        const toggle  = hdr.querySelector('.rp-section-toggle');
+      hdr.addEventListener('click', e => {
+        // Don't trigger if user clicked an rp-item inside (bubbling guard)
+        if (e.target.closest('.rp-item')) return;
+        const section  = hdr.dataset.section;
+        const items    = document.getElementById(`rp-${section}`);
+        const chevron  = hdr.querySelector('.rp-section-chevron');
         if (items) {
           const isHidden = items.style.display === 'none';
           items.style.display = isHidden ? '' : 'none';
-          toggle.textContent  = isHidden ? '▾' : '▸';
+          if (chevron) chevron.classList.toggle('open', isHidden);
         }
       });
     });
@@ -276,6 +317,55 @@
   function colorForYear(year) {
     const map = { '1': '#1A3A6B', '2': '#0E7490', '3': '#166534' };
     return map[String(year)] || '#6B7280';
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // FILTER RESULT BANNER
+  // ════════════════════════════════════════════════════════════════
+  function showFilterResultBanner(count, firstDate) {
+    document.getElementById('filter-result-banner')?.remove();
+
+    const calCard = document.querySelector('.cal-card');
+    if (!calCard) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'filter-result-banner';
+
+    if (count === 0) {
+      banner.className = 'frb frb-empty';
+      banner.innerHTML = `
+        <span class="frb-icon">🔍</span>
+        <span class="frb-text">No assessments match your current filters.</span>
+        <button class="frb-reset" id="frb-reset-btn">Clear filters</button>`;
+    } else {
+      const monthLabel = firstDate.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
+      banner.className = 'frb frb-results';
+      banner.innerHTML = `
+        <span class="frb-icon">📍</span>
+        <span class="frb-text"><strong>${count}</strong> assessment${count !== 1 ? 's' : ''} found · Showing <strong>${monthLabel}</strong></span>
+        <button class="frb-jump" id="frb-jump-btn">Go to first result ↓</button>
+        <button class="frb-dismiss" id="frb-dismiss-btn">✕</button>`;
+    }
+
+    calCard.before(banner);
+
+    document.getElementById('frb-reset-btn')?.addEventListener('click', () => {
+      _filterWeight = 'all';
+      const wEl = document.getElementById('filter-weight');
+      if (wEl) wEl.value = 'all';
+      StateManager.resetFilters();
+      ['filter-course','filter-year','filter-month','filter-type'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = 'all';
+      });
+      document.getElementById('search-input').value = '';
+      banner.remove();
+    });
+
+    document.getElementById('frb-jump-btn')?.addEventListener('click', () => {
+      calCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('frb-dismiss-btn')?.addEventListener('click', () => banner.remove());
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -300,6 +390,26 @@
 
     if (view === 'month') renderMonthView(el, date, data, riskDates);
     else                   renderWeekView(el, date, data, riskDates);
+
+    // Show in-calendar empty state if this specific month/week has no events
+    // but there ARE filtered results elsewhere (user needs to know to navigate)
+    const allFiltered = StateManager.get('filteredData');
+    const hasActiveFilters = (() => {
+      const f = StateManager.get('filters');
+      return f.year !== 'all' || f.month !== 'all' || f.course !== 'all' || f.type !== 'all' || f.search || _filterWeight !== 'all';
+    })();
+    if (hasActiveFilters && allFiltered.length > 0 && data.length === 0) {
+      // Results exist but not in this visible period — show inline nudge
+      const nudge = document.createElement('div');
+      nudge.className = 'cal-empty-nudge';
+      nudge.innerHTML = `<span>No results in this period.</span>
+        <button class="cal-nudge-jump" id="cal-nudge-jump">Jump to first result →</button>`;
+      el.appendChild(nudge);
+      document.getElementById('cal-nudge-jump')?.addEventListener('click', () => {
+        const first = allFiltered.filter(a => a.effectiveDate).sort((a,b) => a.effectiveDate - b.effectiveDate)[0];
+        if (first) StateManager.set('calendarDate', new Date(first.effectiveDate.getFullYear(), first.effectiveDate.getMonth(), 1));
+      });
+    }
   }
 
   function renderMonthView(container, date, data, riskDates) {
@@ -319,21 +429,52 @@
       html += `<div class="${cls}">
         <div class="cal-date-num">${isToday ? `<span class="today-dot">${cell.date.getDate()}</span>` : cell.date.getDate()}</div>
         <div class="cal-events">`;
-      events.slice(0,3).forEach(ev => {
+      const MAX_VISIBLE = 3;
+      events.slice(0, MAX_VISIBLE).forEach(ev => {
         const color = colorMap[ev.course] || '#1A3A6B';
         html += `<div class="cal-event" style="background:${color}18;border-left:2px solid ${color}" data-id="${ev._id}">
           <span class="cal-event-dot" style="background:${color}"></span>
           <span class="cal-event-text">${ev.course} · ${ev.type}${ev.weight ? ' '+ev.weight+'%' : ''}</span>
         </div>`;
       });
-      if (events.length > 3) html += `<div class="cal-more">+${events.length-3} more</div>`;
+      if (events.length > MAX_VISIBLE) {
+        // Render hidden overflow events + a toggle button
+        const overflow = events.slice(MAX_VISIBLE);
+        html += `<div class="cal-overflow-wrap" data-date="${dateKey}">`;
+        overflow.forEach(ev => {
+          const color = colorMap[ev.course] || '#1A3A6B';
+          html += `<div class="cal-event cal-event-hidden" style="background:${color}18;border-left:2px solid ${color}" data-id="${ev._id}">
+            <span class="cal-event-dot" style="background:${color}"></span>
+            <span class="cal-event-text">${ev.course} · ${ev.type}${ev.weight ? ' '+ev.weight+'%' : ''}</span>
+          </div>`;
+        });
+        html += `<button class="cal-more-btn" data-count="${overflow.length}">+${overflow.length} more</button>`;
+        html += `</div>`;
+      }
       html += `</div></div>`;
     });
 
     html += '</div></div>';
     container.innerHTML = html;
+    // Wire all visible event clicks
     container.querySelectorAll('.cal-event').forEach(ev => {
       ev.addEventListener('click', e => { e.stopPropagation(); openAssessmentModal(ev.dataset.id); });
+    });
+    // Wire "more" toggle buttons
+    container.querySelectorAll('.cal-more-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const wrap = btn.closest('.cal-overflow-wrap');
+        const hidden = wrap.querySelectorAll('.cal-event-hidden');
+        const isExpanded = btn.dataset.expanded === '1';
+        hidden.forEach(el => el.style.display = isExpanded ? 'none' : 'flex');
+        btn.dataset.expanded = isExpanded ? '0' : '1';
+        btn.textContent = isExpanded ? `+${btn.dataset.count} more` : 'Show less';
+        // Re-wire clicks on newly visible events
+        hidden.forEach(el => {
+          el.onclick = (e2) => { e2.stopPropagation(); openAssessmentModal(el.dataset.id); };
+        });
+      });
     });
   }
 
@@ -1121,6 +1262,7 @@
           <div class="modal-subtitle">Course ${a.course} · Year ${a.year} · ${a.term}</div>
         </div>
         <div class="modal-body">
+          ${a.instructor ? mrow('👤','Coordinator', a.instructor) : ''}
           ${mrow('📋','Details',a.details||'—')}
           ${mrow('⚖️','Weight',a.weightRaw||'—')}
           ${mrow('📅','Date',a.effectiveDate?formatD(a.effectiveDate):'—')}
@@ -1177,11 +1319,12 @@
     if (filters.type  !== 'all') active.push({key:'type',  label:`Type: ${filters.type}`});
     if (filters.month !== 'all') active.push({key:'month', label:`Month: ${MONTH_NAMES[parseInt(filters.month)]}`});
     if (filters.search)          active.push({key:'search',label:`"${filters.search}"`});
+    if (_filterWeight !== 'all') active.push({key:'weight',label:`Weight: ${_filterWeight}%`});
 
     const bar   = document.getElementById('active-chips-row');
     const chips = document.getElementById('global-filter-chips');
-    if (!bar) { renderHeaderStats(count, total, StateManager.get('riskSequences')); return; }
-    if (!active.length) { bar.classList.add('hidden'); renderHeaderStats(count, total, StateManager.get('riskSequences')); return; }
+    if (!bar) { return; }
+    if (!active.length) { bar.classList.add('hidden'); return; }
     bar.classList.remove('hidden');
     chips.innerHTML = active.map(f =>
       `<span class="fbar-chip">${f.label}<button class="fbar-chip-x" data-key="${f.key}">×</button></span>`
@@ -1190,6 +1333,7 @@
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const k = btn.dataset.key;
+        if (k === 'weight') { _filterWeight = 'all'; const el = document.getElementById('filter-weight'); if (el) el.value='all'; applyFiltersAndRender(); return; }
         StateManager.setFilters({[k]: k==='search'?'':'all'});
         if (k==='course') document.getElementById('filter-course').value='all';
         if (k==='year')   document.getElementById('filter-year').value='all';
@@ -1198,7 +1342,6 @@
         if (k==='search') document.getElementById('search-input').value='';
       });
     });
-    renderHeaderStats(count, total, StateManager.get('riskSequences'));
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1275,8 +1418,13 @@
     document.getElementById('filter-month').addEventListener('change',  e => StateManager.setFilters({month: e.target.value}));
     document.getElementById('filter-type').addEventListener('change',   e => StateManager.setFilters({type:  e.target.value}));
     document.getElementById('search-input').addEventListener('input',   e => StateManager.setFilters({search:e.target.value}));
+    const weightEl = document.getElementById('filter-weight');
+    if (weightEl) weightEl.addEventListener('change', e => { _filterWeight = e.target.value; applyFiltersAndRender(); });
 
     function resetAllFilters() {
+      _filterWeight = 'all';
+      const wEl = document.getElementById('filter-weight');
+      if (wEl) wEl.value = 'all';
       StateManager.resetFilters();
       filterIds.forEach(id => document.getElementById(id).value='all');
       document.getElementById('search-input').value='';
