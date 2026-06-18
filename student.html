@@ -464,6 +464,8 @@
     let darkMode    = JSON.parse(localStorage.getItem('student_dark') || 'false');
     let filters     = { year: 'all', month: 'all', course: 'all', type: 'all', search: '' };
     let _filterCycle = 'all';
+    let _defaultCycle = 'all';
+    let _appLoaded = false;
 
     function getAcademicCycle(date) {
       if (!date) return null;
@@ -507,7 +509,7 @@
         const o = document.createElement('option'); o.value = c; o.textContent = c; cycleEl.appendChild(o);
       });
       const latestCycle = cycles[cycles.length - 1];
-      if (latestCycle) { cycleEl.value = latestCycle; _filterCycle = latestCycle; }
+      if (latestCycle) { cycleEl.value = latestCycle; _filterCycle = latestCycle; _defaultCycle = latestCycle; }
     }
 
     // ── Filter logic ─────────────────────────────────────────────
@@ -836,6 +838,7 @@
 
     // Initial render
     render();
+    _appLoaded = true;
 
   })();
   </script>
