@@ -1031,3 +1031,60 @@ html.dark .frb-empty { background: #1c1200; border-color: #78350F; color: #FCD34
   align-self: flex-start;
 }
 .cal-more-btn:hover { background: var(--accent); color: #fff; }
+
+/* ════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — touch friendly
+════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Filter bar scrolls horizontally on mobile */
+  .filter-bar-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .filter-bar-inner { min-width: 600px; }
+  .filter-row { flex-wrap: nowrap; padding: 8px 12px; gap: 6px; }
+
+  /* Make selects bigger touch targets */
+  .fbar-select { font-size: 14px; min-height: 32px; }
+  .fbar-item   { padding: 6px 10px; min-width: 100px; }
+  .fbar-reset  { padding: 8px 14px; font-size: 13px; white-space: nowrap; }
+
+  /* Top bar */
+  .top-bar { padding: 0 12px; height: 50px; }
+  .top-bar-right { gap: 4px; }
+  .btn-student-view { display: none; } /* hide on mobile, link in menu */
+  .top-tabs .top-tab { padding: 5px 10px; font-size: 11px; }
+  .btn-export-top { padding: 6px 10px; font-size: 11px; }
+
+  /* Main layout — stack calendar and risk panel */
+  .main-view { grid-template-columns: 1fr !important; gap: 12px; }
+  .risk-column { width: 100% !important; max-height: 300px; overflow-y: auto; }
+
+  /* Calendar cells smaller */
+  .cal-cell { min-height: 60px; padding: 4px 3px; }
+  .cal-event-text { font-size: 10px; }
+  .cal-event { padding: 2px 4px; }
+  .cal-dow { font-size: 10px; padding: 6px 0; }
+  .cal-date-num { font-size: 11px; }
+
+  /* Modal full screen on mobile */
+  .modal-box { width: 96vw !important; max-height: 92vh; top: 4% !important;
+               transform: translateX(-50%) !important; left: 50% !important; }
+
+  /* Main content padding */
+  .main-content { padding: 10px 10px; }
+
+  /* KPI grid 2 columns on mobile */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+@media (max-width: 480px) {
+  .app-ucvm { font-size: 11px; letter-spacing: 1.5px; }
+  .app-brand-sep { display: none; }
+  .app-title { display: none; }
+  .cal-cell { min-height: 48px; }
+  .cal-event-text { display: none; } /* just dots on very small screens */
+  .cal-event-dot { width: 7px; height: 7px; }
+}
+
+.btn-ical {
+  background: #166534 !important; border-color: #166534 !important;
+}
+.btn-ical:hover { background: #14532d !important; }
