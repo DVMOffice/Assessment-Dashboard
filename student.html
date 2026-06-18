@@ -485,8 +485,8 @@
     const typeEl   = document.getElementById('filter-type');
     const cycleEl  = document.getElementById('filter-cycle');
 
-    // Program Years — Year 1, 2, 3 only
-    [...new Set(rawData.map(a => a.year).filter(Boolean))].sort().forEach(y => {
+    // Program Years — strictly Year 1, 2, 3 only
+    [...new Set(rawData.map(a => a.year).filter(y => y >= 1 && y <= 3))].sort().forEach(y => {
       const o = document.createElement('option'); o.value = y; o.textContent = `Year ${y}`; yearEl.appendChild(o);
     });
     // Courses
