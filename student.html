@@ -629,18 +629,42 @@
 
     // ── Upcoming list ─────────────────────────────────────────────
     function renderUpcoming() {
-      const el   = document.getElementById('upcoming-body');
-      const data = getFiltered();
+      const el    = document.getElementById('upcoming-body');
+      const data  = getFiltered();
       const today = new Date(); today.setHours(0,0,0,0);
-      const upcoming = data
-        .filter(a => a.effectiveDate && a.effectiveDate >= today)
-        .sort((a,b) => a.effectiveDate - b.effectiveDate)
-        .slice(0, 30);
+
+      // End of next month — e.g. if today is Jun 18 → Jul 31
+      const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59);
+
+      let upcoming = data
+        .filter(a => a.effectiveDate && a.effectiveDate >= today && a.effectiveDate <= endOfNextMonth)
+        .sort((a,b) => a.effectiveDate - b.effectiveDate);
+
+      // Fallback: if nothing in window, show next 10 future assessments
+      const usedFallback = upcoming.length === 0;
+      if (usedFallback) {
+        upcoming = data
+          .filter(a => a.effectiveDate && a.effectiveDate >= today)
+          .sort((a,b) => a.effectiveDate - b.effectiveDate)
+          .slice(0, 10);
+      }
+
+      // Period label
+      const periodStart = today.toLocaleDateString('en-CA', { month: 'long', day: 'numeric' });
+      const periodEnd   = endOfNextMonth.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' });
+      const periodLabel = usedFallback
+        ? `Next ${upcoming.length} upcoming assessments`
+        : `${today.toLocaleDateString('en-CA',{month:'long', day:'numeric'})} – ${endOfNextMonth.toLocaleDateString('en-CA',{month:'long', year:'numeric'})} · ${upcoming.length} assessment${upcoming.length!==1?'s':''}`;
+
+      // Update header hint
+      const hintEl = document.querySelector('.upcoming-hint');
+      if (hintEl) hintEl.textContent = periodLabel;
 
       if (!upcoming.length) {
-        el.innerHTML = `<div class="empty-state">📭 No upcoming assessments found for this selection.</div>`;
+        el.innerHTML = `<div class="empty-state">📭 No upcoming assessments in this period.</div>`;
         return;
       }
+
       el.innerHTML = `<table class="upcoming-table">
         <thead><tr>
           <th>Date</th><th>Course</th><th>Assessment</th><th>Type</th><th style="text-align:right">Weight</th>
