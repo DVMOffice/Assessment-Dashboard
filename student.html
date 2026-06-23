@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     /* ── CSS Variables ─────────────────────────────────────────── */
     :root {
@@ -492,17 +493,23 @@
   (async function() {
     'use strict';
 
-    // ── Load data ────────────────────────────────────────────────
+    // ── Load data from OneDrive ─────────────────────────────────────
+    const ONEDRIVE_URL = 'https://uofc-my.sharepoint.com/:x:/g/personal/elsa_sanchez_ucalgary_ca/IQBicZrxEeoJTaBcaaxVEC2GAQ82mXM3FNeC9FMB3CmLyzw?download=1';
+
     let rawData = [];
     try {
-      const res = await fetch('./data.csv');
+      const res = await fetch(ONEDRIVE_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      rawData = await DataParser.loadFromText(await res.text());
+      const buffer  = await res.arrayBuffer();
+      const wb      = XLSX.read(buffer, { type: 'array', cellDates: false });
+      const sheet   = wb.Sheets[wb.SheetNames[0]];
+      const csvText = XLSX.utils.sheet_to_csv(sheet);
+      rawData = await DataParser.loadFromText(csvText);
     } catch (err) {
       document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#1E3A5F;color:#EBF1FA;flex-direction:column;gap:16px;padding:32px;text-align:center">
         <div style="font-size:48px">📋</div>
-        <h2>Could not load data.csv</h2>
-        <p style="color:#90AECB;max-width:400px">${err.message}<br><br>Make sure data.csv is in the same folder.</p></div>`;
+        <h2>Could not load assessment data</h2>
+        <p style="color:#90AECB;max-width:400px">${err.message}<br><br>Could not reach the OneDrive file. Check the share link is still set to "Anyone with the link can view".</p></div>`;
       return;
     }
 
