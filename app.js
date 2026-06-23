@@ -21,24 +21,22 @@
   let _defaultCycle      = 'all'; // tracks the auto-set default so we don't show banner on load
   let _appLoaded         = false; // prevents banner on initial render
 
-  // ── Load Excel from OneDrive ────────────────────────────────────────────
-  const ONEDRIVE_URL = 'https://uofc-my.sharepoint.com/:x:/g/personal/elsa_sanchez_ucalgary_ca/IQBicZrxEeoJTaBcaaxVEC2GAQ82mXM3FNeC9FMB3CmLyzw?download=1';
+  // ── Load data from Google Sheets ────────────────────────────────────────
+  const SHEET_ID  = '1npTCM0Y7PZ0e9Jtjb99iF4jycqsvVq2wr3Wjic2B7lw';
+  const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
   let rawData;
   try {
-    const res = await fetch(ONEDRIVE_URL);
+    const res = await fetch(SHEET_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buffer = await res.arrayBuffer();
-    const wb     = XLSX.read(buffer, { type: 'array', cellDates: false });
-    const sheet  = wb.Sheets[wb.SheetNames[0]];
-    const csvText = XLSX.utils.sheet_to_csv(sheet);
+    const csvText = await res.text();
     rawData = await DataParser.loadFromText(csvText);
-    console.info(`[AID] Loaded ${rawData.length} assessments from OneDrive`);
+    console.info(`[AID] Loaded ${rawData.length} assessments from Google Sheets`);
   } catch (err) {
     document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#1E3A5F;color:#EBF1FA;flex-direction:column;gap:16px;padding:32px;text-align:center">
       <div style="font-size:48px">📋</div>
       <h2>Could not load assessment data</h2>
-      <p style="color:#90AECB;max-width:400px">${err.message}<br><br>Could not reach the OneDrive file. Check the share link is still set to "Anyone with the link can view".</p></div>`;
+      <p style="color:#90AECB;max-width:400px">${err.message}<br><br>Could not reach the Google Sheet. Check the share link is still set to "Anyone with the link can view".</p></div>`;
     return;
   }
 
